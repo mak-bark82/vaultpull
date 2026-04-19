@@ -3,61 +3,55 @@ package syncer
 import (
 	"fmt"
 
-	"github.com/example/vaultpull/internal/audit"
-	"github.com/example/vaultpull/internal/config"
-	"github.com/example/vaultpull/internal/envwriter"
-	"github.com/example/vaultpull/internal/vault"
+	"github.com/user/vaultpull/internal/audit"
+	"github.com/user/vaultpull/internal/config"
+	"github.com/user/vaultpull/internal/diff"
+	"github.com/user/vaultpull/internal/envreader"
+	"github.com/user/vaultpull/internal/envwriter"
+	"github.com/user/vaultpull/internal/vault"
 )
 
-// VaultReader abstracts secret reading from Vault.
-type VaultReader interface {
-	ReadSecrets(path string) (map[string]string, error)
-}
-
-// Syncer orchestrates pulling secrets and writing env files.
+// Syncer orchestrates reading secrets from Vault and writing them to .env files.
 type Syncer struct {
-	client  VaultReader
-	logger  *audit.Logger
+	client   *vault.Client
+	mappings []config.Mapping
+	logger   *audit.Logger
 }
 
-// New creates a Syncer with the provided Vault client and audit logger.
-func New(c VaultReader, l *audit.Logger) *Syncer {
-	if l == nil {
-		l = &audit.Logger{}
+// New creates a Syncer from the given config.
+func New(cfg *config.Config, mappings []config.Mapping, logger *audit.Logger) (*Syncer, error) {
+	c, err := vault.NewClient(cfg.VaultAddr, cfg.VaultToken)
+	if err != nil {
+		return nil, err
 	}
-	return &Syncer{client: c, logger: l}
+	return &Syncer{client: c, mappings: mappings, logger: logger}, nil
 }
 
-// Run iterates over mappings, pulls secrets, and writes env files.
-func (s *Syncer) Run(mappings []config.Mapping, overwrite bool) error {
-	for _, m := range mappings {
+// Run iterates over all mappings, diffs secrets, and writes changes.
+func (s *Syncer) Run() error {
+	for _, m := range s.mappings {
 		secrets, err := s.client.ReadSecrets(m.VaultPath)
-		entry := audit.Entry{
-			VaultPath: m.VaultPath,
-			EnvFile:   m.EnvFile,
-		}
 		if err != nil {
-			entry.Status = "error"
-			entry.Message = err.Error()
-			_ = s.logger.Log(entry)
-			return fmt.Errorf("syncer: read %q: %w", m.VaultPath, err)
+			return fmt.Errorf("reading vault path %q: %w", m.VaultPath, err)
 		}
-		keys := make([]string, 0, len(secrets))
-		for k := range secrets {
-			keys = append(keys, k)
+
+		existing, err := envreader.Read(m.EnvFile)
+		if err != nil {
+			return fmt.Errorf("reading env file %q: %w", m.EnvFile, err)
 		}
-		if err := envwriter.Write(m.EnvFile, secrets, overwrite); err != nil {
-			entry.Status = "error"
-			entry.Message = err.Error()
-			_ = s.logger.Log(entry)
-			return fmt.Errorf("syncer: write %q: %w", m.EnvFile, err)
+
+		result := diff.Compare(existing, secrets)
+		if !result.HasChanges() {
+			fmt.Printf("%s: no changes\n", m.EnvFile)
+			continue
 		}
-		entry.Keys = keys
-		entry.Status = "success"
-		_ = s.logger.Log(entry)
+
+		if err := envwriter.Write(m.EnvFile, secrets, true); err != nil {
+			return fmt.Errorf("writing env file %q: %w", m.EnvFile, err)
+		}
+
+		_ = s.logger.Log(m.VaultPath, m.EnvFile, result.Summary())
+		fmt.Printf("%s: %s\n", m.EnvFile, result.Summary())
 	}
 	return nil
 }
-
-// Ensure vault.Client satisfies VaultReader.
-var _ VaultReader = (*vault.Client)(nil)
