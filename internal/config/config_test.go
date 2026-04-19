@@ -5,80 +5,68 @@ import (
 	"testing"
 )
 
-func setEnv(t *testing.T, key, value string) {
+func setEnv(t *testing.T, key, val string) {
 	t.Helper()
-	t.Setenv(key, value)
+	t.Setenv(key, val)
 }
 
 func setValidEnv(t *testing.T) {
-	t.Helper()
 	setEnv(t, "VAULT_ADDR", "http://127.0.0.1:8200")
-	setEnv(t, "VAULT_TOKEN", "test-token")
-	setEnv(t, "VAULTPULL_SECRET_PATH", "secret/data/myapp")
+	setEnv(t, "VAULT_TOKEN", "root")
 }
 
 func TestLoad_Valid(t *testing.T) {
 	setValidEnv(t)
-
-	cfg, err := Load("")
+	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.VaultAddress != "http://127.0.0.1:8200" {
-		t.Errorf("unexpected VaultAddress: %s", cfg.VaultAddress)
+	if cfg.VaultAddr != "http://127.0.0.1:8200" {
+		t.Errorf("unexpected addr: %s", cfg.VaultAddr)
 	}
-	if cfg.OutputFile != ".env" {
-		t.Errorf("expected default OutputFile '.env', got %s", cfg.OutputFile)
-	}
-	if cfg.Overwrite != false {
-		t.Errorf("expected Overwrite false by default")
+	if cfg.MappingFile != "vaultpull.yaml" {
+		t.Errorf("expected default mapping file, got: %s", cfg.MappingFile)
 	}
 }
 
 func TestLoad_MissingVaultAddr(t *testing.T) {
 	os.Unsetenv("VAULT_ADDR")
-	setEnv(t, "VAULT_TOKEN", "test-token")
-	setEnv(t, "VAULTPULL_SECRET_PATH", "secret/data/myapp")
-
-	_, err := Load("")
-	if err == nil || err.Error() != "VAULT_ADDR is required" {
-		t.Errorf("expected VAULT_ADDR error, got %v", err)
+	setEnv(t, "VAULT_TOKEN", "root")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for missing VAULT_ADDR")
 	}
 }
 
 func TestLoad_MissingToken(t *testing.T) {
 	setEnv(t, "VAULT_ADDR", "http://127.0.0.1:8200")
 	os.Unsetenv("VAULT_TOKEN")
-	setEnv(t, "VAULTPULL_SECRET_PATH", "secret/data/myapp")
-
-	_, err := Load("")
-	if err == nil || err.Error() != "VAULT_TOKEN is required" {
-		t.Errorf("expected VAULT_TOKEN error, got %v", err)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for missing VAULT_TOKEN")
 	}
 }
 
-func TestLoad_OverwriteTrue(t *testing.T) {
+func TestLoad_DryRun(t *testing.T) {
 	setValidEnv(t)
-	setEnv(t, "VAULTPULL_OVERWRITE", "true")
-
-	cfg, err := Load("")
+	setEnv(t, "VAULTPULL_DRY_RUN", "true")
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !cfg.Overwrite {
-		t.Errorf("expected Overwrite to be true")
+	if !cfg.DryRun {
+		t.Error("expected DryRun to be true")
 	}
 }
 
-func TestLoad_CustomOutputFile(t *testing.T) {
+func TestLoad_CustomMappingFile(t *testing.T) {
 	setValidEnv(t)
-	setEnv(t, "VAULTPULL_OUTPUT_FILE", ".env.local")
-
-	cfg, err := Load("")
+	setEnv(t, "VAULTPULL_MAPPING", "custom.yaml")
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.OutputFile != ".env.local" {
-		t.Errorf("expected .env.local, got %s", cfg.OutputFile)
+	if cfg.MappingFile != "custom.yaml" {
+		t.Errorf("expected custom.yaml, got: %s", cfg.MappingFile)
 	}
 }

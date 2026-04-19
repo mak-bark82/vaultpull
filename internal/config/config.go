@@ -3,57 +3,38 @@ package config
 import (
 	"errors"
 	"os"
+)
 
-	"github.com/jo)
-
-// Config holds the configuration for vaultpull.
+// Config holds runtime configuration for vaultpull.
 type Config struct {
-	VaultAddress string
-	VaultToken   string
-	SecretPath   string
-	OutputFile   string
-	Overwrite    bool
+	VaultAddr  string
+	VaultToken string
+	AuditLog   string
+	MappingFile string
+	DryRun     bool
+	Overwrite  bool
 }
 
-// Load reads configuration from environment variables,
-// optionally loading a .env file first if it exists.
-func Load(envFile string) (*Config, error) {
-	if envFile != "" {
-		if _, err := os.Stat(envFile); err == nil {
-			if err := godotenv.Load(envFile); err != nil {
-				return nil, err
-			}
-		}
+// Load reads configuration from environment variables.
+func Load() (*Config, error) {
+	addr := os.Getenv("VAULT_ADDR")
+	if addr == "" {
+		return nil, errors.New("VAULT_ADDR is required")
 	}
-
-	cfg := &Config{
-		VaultAddress: os.Getenv("VAULT_ADDR"),
-		VaultToken:   os.Getenv("VAULT_TOKEN"),
-		SecretPath:   os.Getenv("VAULTPULL_SECRET_PATH"),
-		OutputFile:   os.Getenv("VAULTPULL_OUTPUT_FILE"),
-		Overwrite:    os.Getenv("VAULTPULL_OVERWRITE") == "true",
+	token := os.Getenv("VAULT_TOKEN")
+	if token == "" {
+		return nil, errors.New("VAULT_TOKEN is required")
 	}
-
-	if err := cfg.validate(); err != nil {
-		return nil, err
+	mappingFile := os.Getenv("VAULTPULL_MAPPING")
+	if mappingFile == "" {
+		mappingFile = "vaultpull.yaml"
 	}
-
-	if cfg.OutputFile == "" {
-		cfg.OutputFile = ".env"
-	}
-
-	return cfg, nil
-}
-
-func (c *Config) validate() error {
-	if c.VaultAddress == "" {
-		return errors.New("VAULT_ADDR is required")
-	}
-	if c.VaultToken == "" {
-		return errors.New("VAULT_TOKEN is required")
-	}
-	if c.SecretPath == "" {
-		return errors.New("VAULTPULL_SECRET_PATH is required")
-	}
-	return nil
+	return &Config{
+		VaultAddr:   addr,
+		VaultToken:  token,
+		AuditLog:    os.Getenv("VAULTPULL_AUDIT_LOG"),
+		MappingFile: mappingFile,
+		DryRun:      os.Getenv("VAULTPULL_DRY_RUN") == "true",
+		Overwrite:   os.Getenv("VAULTPULL_OVERWRITE") == "true",
+	}, nil
 }
