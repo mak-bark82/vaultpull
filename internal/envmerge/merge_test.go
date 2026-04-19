@@ -73,3 +73,15 @@ func TestMerge_EmptyLocal(t *testing.T) {
 		t.Errorf("expected 2 merged keys, got %d", len(res.Merged))
 	}
 }
+
+func TestMerge_LocalKeysPreserved(t *testing.T) {
+	// Keys present only in local should always be retained in the merged output.
+	local := map[string]string{"LOCAL_ONLY": "keep", "SHARED": "local_val"}
+	incoming := map[string]string{"SHARED": "vault_val"}
+
+	res := envmerge.Merge(local, incoming, envmerge.PreferVault)
+
+	if res.Merged["LOCAL_ONLY"] != "keep" {
+		t.Errorf("expected LOCAL_ONLY to be preserved, got %q", res.Merged["LOCAL_ONLY"])
+	}
+}
