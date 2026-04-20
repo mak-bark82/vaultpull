@@ -59,3 +59,14 @@ func TestRead_SkipsMalformedLines(t *testing.T) {
 		t.Errorf("expected 1 entry, got %v", m)
 	}
 }
+
+func TestRead_ValueWithEqualsSign(t *testing.T) {
+	path := writeFile(t, "FOO=bar=baz\n")
+	m, err := Read(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m["FOO"] != "bar=baz" {
+		t.Errorf("expected value 'bar=baz', got %q", m["FOO"])
+	}
+}
