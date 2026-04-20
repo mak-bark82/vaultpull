@@ -75,3 +75,15 @@ func TestValidate_OptionalMissingKey(t *testing.T) {
 		t.Fatalf("expected no error for missing optional key, got: %v", err)
 	}
 }
+
+// TestValidate_ValidAllowedValue verifies that a present value matching one of
+// the allowed values does not produce a validation error.
+func TestValidate_ValidAllowedValue(t *testing.T) {
+	env := map[string]string{"LOG_LEVEL": "info"}
+	rules := []envvalidator.Rule{
+		{Key: "LOG_LEVEL", Allowed: []string{"debug", "info", "warn", "error"}},
+	}
+	if err := envvalidator.Validate(env, rules); err != nil {
+		t.Fatalf("expected no error for valid allowed value, got: %v", err)
+	}
+}
