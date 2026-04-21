@@ -55,6 +55,18 @@ func Import(src string, dst map[string]string, opts Options) (map[string]string,
 	return result, nil
 }
 
+// stripQuotes removes a matching pair of surrounding single or double quotes
+// from s, if present. It does not strip mismatched or nested quotes.
+func stripQuotes(s string) string {
+	if len(s) >= 2 {
+		if (s[0] == '"' && s[len(s)-1] == '"') ||
+			(s[0] == '\'' && s[len(s)-1] == '\'') {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
 func parseDotenv(f *os.File) (map[string]string, error) {
 	out := make(map[string]string)
 	scanner := bufio.NewScanner(f)
@@ -68,7 +80,7 @@ func parseDotenv(f *os.File) (map[string]string, error) {
 			continue
 		}
 		key := strings.TrimSpace(parts[0])
-		val := strings.Trim(strings.TrimSpace(parts[1]), `"`)
+		val := stripQuotes(strings.TrimSpace(parts[1]))
 		if key == "" {
 			continue
 		}
