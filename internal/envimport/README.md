@@ -33,4 +33,6 @@ result, err := envimport.Import(".env.staging", existing, envimport.Options{
 
 - Quoted values (`KEY="hello world"`) are unquoted automatically.
 - Malformed lines (no `=` separator) are silently skipped.
+- Empty lines and lines beginning with `#` are ignored.
 - The original `dst` map is never mutated; a new map is returned.
+- Keys are trimmed of surrounding whitespace; values are not.
