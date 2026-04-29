@@ -50,6 +50,16 @@ func (c *Chain) Run(input map[string]string) ([]Result, map[string]string, error
 	return results, current, nil
 }
 
+// Stages returns a copy of the stage names registered in the chain.
+// This is useful for inspection and debugging without exposing internals.
+func (c *Chain) Stages() []string {
+	names := make([]string, len(c.stages))
+	for i, s := range c.stages {
+		names[i] = s.Name
+	}
+	return names
+}
+
 func copyMap(m map[string]string) map[string]string {
 	out := make(map[string]string, len(m))
 	for k, v := range m {
