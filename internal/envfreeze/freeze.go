@@ -91,6 +91,12 @@ func (f *Freezer) Unfreeze(key string) error {
 	return f.save()
 }
 
+// Clear removes all frozen keys and persists the empty set.
+func (f *Freezer) Clear() error {
+	f.set = &FrozenSet{}
+	return f.save()
+}
+
 func (f *Freezer) save() error {
 	if err := os.MkdirAll(filepath.Dir(f.path), 0o755); err != nil {
 		return err
