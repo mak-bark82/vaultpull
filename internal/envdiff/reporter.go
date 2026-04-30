@@ -62,6 +62,22 @@ func (r Report) HasChanges() bool {
 	return len(r.Changes) > 0
 }
 
+// Summary returns a brief count of added, removed, and changed keys.
+func (r Report) Summary() string {
+	var added, removed, changed int
+	for _, c := range r.Changes {
+		switch c.Kind {
+		case Added:
+			added++
+		case Removed:
+			removed++
+		case Changed:
+			changed++
+		}
+	}
+	return fmt.Sprintf("%d added, %d removed, %d changed", added, removed, changed)
+}
+
 // Print writes a human-readable summary of the report to w.
 func (r Report) Print(w io.Writer) {
 	if !r.HasChanges() {
